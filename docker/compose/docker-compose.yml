@@ -1,0 +1,57 @@
+
+services:
+  bg-db:
+    image: postgres:16 # You can use a specific version like postgres:16-alpine for a smaller image
+    restart: always
+    environment:
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+      POSTGRES_DB: mydb
+    ports:
+      - "5432:5432" # Maps port 5432 on your Windows host to port 5432 in the container
+    volumes:
+      - ./postgres/init:/docker-entrypoint-initdb.d
+      - pgdata:/var/lib/postgresql/data # Persist data in a named volume
+
+  bg-keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    command: start-dev --import-realm
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      # SMTP settings
+      KC_EMAIL_SMTP_HOST: bg-mailhog
+      KC_EMAIL_SMTP_PORT: 1025
+      KC_EMAIL_SMTP_USER: ""
+      KC_EMAIL_SMTP_PASSWORD: ""
+      KC_EMAIL_FROM: no-reply@local.dev
+      KC_EMAIL_SMTP_FROM_DISPLAY_NAME: "Dev Keycloak"
+      KC_EMAIL_SMTP_ENCRYPTION: none
+    ports:
+      - "8080:8080"
+    depends_on:
+      - bg-mailhog
+    volumes:
+      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm.json
+
+  bg-mailhog:
+    image: mailhog/mailhog
+    ports:
+      - "1025:1025" # SMTP port
+      - "8025:8025" # Web UI port
+
+  bg-valkey:
+    image: valkey/valkey:9
+    ports:
+      - "6379:6379"
+    command: >
+      valkey-server
+      --appendonly no
+      --save ""
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - ./valkey_data:/data
+
+volumes:
+  pgdata:

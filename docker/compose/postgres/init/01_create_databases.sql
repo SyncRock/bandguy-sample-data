@@ -1,0 +1,2 @@
+CREATE DATABASE kong;
+CREATE DATABASE bandguy;
